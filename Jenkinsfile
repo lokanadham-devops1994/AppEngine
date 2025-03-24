@@ -54,7 +54,7 @@ pipeline {
                     sh 'gcloud config set project $PROJECT_ID'
 
                     // Deploy the application to App Engine
-                    sh 'gcloud app deploy --bucket=gs://avian-chariot-450105-deployments --quiet'
+                    sh 'gcloud app deploy --bucket=gs://morning-batch-449809-deployments --quiet'
                 }
             }
         }
