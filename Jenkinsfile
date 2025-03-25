@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         PROJECT_ID = 'morning-batch-449809'
-        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')  // Service account credential
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-service-account')
     }
 
     stages {
@@ -17,22 +17,10 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    # Update apt package list
-                    sudo apt-get update -y
-                    
-                    # Install Python3 and development tools if not installed
-                    sudo apt-get install -y python3-pip python3-dev python3-venv bash
-                    
-                    # Create a virtual environment
+                    # Ensure Python and dependencies are available
                     python3 -m venv venv
-                    
-                    # Activate the virtual environment
-                    . venv/bin/activate  # Using dot (.) instead of 'source'
-                    
-                    # Upgrade pip inside the virtual environment
+                    . venv/bin/activate
                     pip install --upgrade pip
-                    
-                    # Install dependencies from requirements.txt
                     pip install -r requirements.txt
                     '''
                 }
@@ -42,19 +30,23 @@ pipeline {
         stage('Deploy to Google App Engine') {
             steps {
                 script {
-                    // Check gcloud installation and working directory
                     sh 'gcloud --version'
-                    sh 'pwd'
-                    sh 'ls -l'  // List files to verify app.yaml presence
+                    sh 'pwd && ls -l'
 
-                    // Authenticate with Google Cloud
-                    sh 'gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}'
+                    # Authenticate using correct file path
+                    sh 'gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"'
 
-                    // Set the GCP project
+                    # Set project ID
                     sh 'gcloud config set project $PROJECT_ID'
 
-                    // Deploy the application to App Engine
-                    sh 'gcloud app deploy --bucket=gs://morning-batch-449809-deployments --quiet'
+                    # Check if app.yaml exists
+                    sh '''
+                    if [ ! -f app.yaml ]; then
+                        echo "Error: app.yaml not found!"
+                        exit 1
+                    fi
+                    gcloud app deploy app.yaml --quiet
+                    '''
                 }
             }
         }
@@ -62,8 +54,10 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up...'
-            cleanWs()  // Cleans workspace
+            node {
+                echo 'Cleaning up...'
+                cleanWs()
+            }
         }
 
         success {
